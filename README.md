@@ -100,7 +100,7 @@ Currently this only supports python projects via the `node["webapp"]["python"]`
 parameters as explained in the webapp::python recipe.
 
 8. `start_command` implementation must be defined in the webapp type-specific 
-recipe.
+recipe. An example can be found in the webapp::python recipe.
 
 ### webapp::python
 
@@ -140,11 +140,11 @@ performed.
     `node["python"]["WORKON_HOME"]` set to WORKON_HOME 
     for your installation of virtualenvwrapper. The user `deployer` must have 
     access to this directory. You can install virtualenvwrapper with my custom 
-    python cookbook (https://github.com/davidmarble/cookbook-python), which also 
-    makes use of `node["python"]["WORKON_HOME"]`. 
+    python cookbook (https://github.com/davidmarble/cookbook-python), which 
+    also makes use of `node["python"]["WORKON_HOME"]`. 
     
-        If node["python"]["WORKON_HOME"] is set and virtualenvwrapper is installed, 
-        a virtualenv is created in 
+        If `node["python"]["WORKON_HOME"]` is set and virtualenvwrapper is 
+        installed, a virtualenv is created in 
         `#{node[:python][:WORKON_HOME]}/#{node[:webapp][:app_name]}` and 
         requirements are installed there.
 
