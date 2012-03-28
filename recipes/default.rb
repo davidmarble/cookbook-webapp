@@ -111,10 +111,10 @@ if !(node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_l
         cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}"
         code <<-EOH
         if ! [ -d #{node[:webapp][:branch_or_tag]} ]; then
-            git clone #{node[:webapp][:repo]} #{node[:webapp][:branch_or_tag]}
+            git clone --recursive #{node[:webapp][:repo]} #{node[:webapp][:branch_or_tag]}
             cd #{node[:webapp][:branch_or_tag]} && git checkout #{node[:webapp][:branch_or_tag]}
         else
-            cd #{node[:webapp][:branch_or_tag]} && git pull
+            cd #{node[:webapp][:branch_or_tag]} && git pull && git submodule update --init --recursive
         fi
         EOH
     end
