@@ -1,7 +1,6 @@
 include_recipe "utils::disable_hg_cert_checking"
 include_recipe "python::default"
 
-node.default[:webapp][:python][:framework] = nil
 python_base = ""
 
 if node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_local_repo") and node[:using_vagrant][:use_local_repo]
@@ -28,24 +27,13 @@ if node.attribute?("python") and node[:python].has_key?("WORKON_HOME")
             # action :install
         # end
         
-        # This is unused because of intricacies of requirements files parsed by pip
-        # execute "git config --global http.sslverify false"
-        # File.open("#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live/#{node[:webapp][:python][:virtualenv_reqs]}", "r").each do |line|
-            # if !line.match(/^#/)
-                # bash "#{node[:python][:WORKON_HOME]}/#{node[:webapp][:app_name]}/bin/pip install #{line}" do
-                    # user node[:webapp][:deployer]
-                    # cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live"
-                # end
-            # end
-        # end
-        
         script "Install Requirements" do
             interpreter "bash"
-            user node[:webapp][:deployer]
+            user "root"
             cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live"
             code <<-EOH
-            git config http.sslverify false
-            #{node[:python][:WORKON_HOME]}/#{node[:webapp][:app_name]}/bin/pip install -r #{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live/#{node[:webapp][:python][:virtualenv_reqs]}
+            git config --global http.sslverify false
+            su -l -c '#{node[:python][:WORKON_HOME]}/#{node[:webapp][:app_name]}/bin/pip install -r #{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live/#{node[:webapp][:python][:virtualenv_reqs]}' #{webapp_user} 
             EOH
         end
     end
@@ -53,7 +41,6 @@ end
 
 # TODO: Run syncdb (possibly for the first time) and restart needed services
 if node[:webapp][:python].attribute?("django")
-    node.default[:webapp][:python][:django][:options] = []
     
     script "syncdb" do
         interpreter "bash"
@@ -80,7 +67,7 @@ if node[:webapp].attribute?("start_command")
         interpreter "bash"
         user "root"
         code <<-EOH
-        su -l -c 'if [ -f $HOME/.aliases ]; then source $HOME/.aliases && #{node[:webapp][:start_command]} > /dev/null 2>&1; else #{node[:webapp][:start_command]} > /dev/null 2>&1; fi' root > /dev/null
+        su -l -c 'if [ -f $HOME/.aliases ]; then source $HOME/.aliases && #{node[:webapp][:start_command]} > /dev/null 2>&1; else #{node[:webapp][:start_command]} > /dev/null 2>&1; fi' #{webapp_user} > /dev/null
         EOH
     end
 end

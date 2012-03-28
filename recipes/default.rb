@@ -1,9 +1,6 @@
 include_recipe "git::default"
 require 'set'
 
-node.default[:webapp][:deploy_root_owner] = node[:webapp][:deployer]
-node.default[:webapp][:deploy_root_group] = node[:webapp][:deployer]
-
 members = Set.new
 
 if node.has_key?("deploy_root_group_members")
@@ -20,7 +17,9 @@ end
 
 # Ensure all deploy_root_group_members exist
 members.each do |username|
-    utils_ensure_user username
+    utils_ensure_user username do
+        update_if_exists false
+    end
 end
 
 # Ensure deploy_root_group exists
@@ -99,15 +98,18 @@ directory "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/site_media
 end
 
 # Check if using a local vagrant repo. 
-# If not, grab code with branch and tag specified.
-# If no tag specified, default to HEAD.
+# If not, grab code with branch and tag specified. Default is master.
 
-node.default[:webapp][:branch_or_tag] = "master"
+if node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_local_repo") and node[:using_vagrant][:use_local_repo]
+    webapp_user = "vagrant" 
+else
+    webapp_user = node[:webapp][:deployer] 
+end
 
 if !(node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_local_repo") and node[:using_vagrant][:use_local_repo])
     script "clone or pull #{node[:webapp][:app_name]} repo" do
         interpreter "bash"
-        user node[:webapp][:deployer]
+        user webapp_user
         cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}"
         code <<-EOH
         if ! [ -d #{node[:webapp][:branch_or_tag]} ]; then
@@ -125,7 +127,7 @@ if node[:webapp].attribute?("stop_command")
         interpreter "bash"
         user "root"
         code <<-EOH
-        su -l -c 'if [ -f $HOME/.aliases ]; then source $HOME/.aliases && #{node[:webapp][:stop_command]} > /dev/null 2>&1; else #{node[:webapp][:stop_command]} > /dev/null 2>&1; fi' root > /dev/null
+        su -l -c 'if [ -f $HOME/.aliases ]; then source $HOME/.aliases && #{node[:webapp][:stop_command]} > /dev/null 2>&1; else #{node[:webapp][:stop_command]} > /dev/null 2>&1; fi' #{webapp_user} > /dev/null 2>&1
         EOH
     end
 end
@@ -134,7 +136,7 @@ end
 if !(node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_local_repo") and node[:using_vagrant][:use_local_repo])
     script "ln -s #{node[:webapp][:branch_or_tag]} to live" do
         interpreter "bash"
-        user node[:webapp][:deployer]
+        user webapp_user
         cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}"
         code <<-EOH
         if [ -s live ]; then
