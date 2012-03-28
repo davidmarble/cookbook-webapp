@@ -42,21 +42,22 @@ end
 # TODO: Run syncdb (possibly for the first time) and restart needed services
 if node[:webapp][:python].attribute?("django")
     
-    script "syncdb" do
-        interpreter "bash"
-        user webapp_user
-        cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live" 
-        code <<-EOH
-        #{python_base}python manage.py syncdb --noinput
-        EOH
-    end
     if node[:webapp][:python][:django][:options].include?("south")
-        script "run migrations" do
+        script "syncdb-south" do
             interpreter "bash"
             user webapp_user
             cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live" 
             code <<-EOH
-            #{python_base}python manage.py migrate
+            #{python_base}python manage.py syncdb --migrate --noinput
+            EOH
+        end
+    else
+        script "syncdb" do
+            interpreter "bash"
+            user webapp_user
+            cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live" 
+            code <<-EOH
+            #{python_base}python manage.py syncdb --noinput
             EOH
         end
     end
