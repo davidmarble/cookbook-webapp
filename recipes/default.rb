@@ -3,7 +3,7 @@ require 'set'
 
 members = Set.new
 
-if node.has_key?("deploy_root_group_members")
+if node[:webapp].has_key?("deploy_root_group_members")
     members.merge(node[:deploy_root_group_members])
     # Just to be safe
     members.merge(node[:webapp][:deploy_root_owner])
@@ -11,7 +11,7 @@ else
     members.merge([node[:webapp][:deployer], node[:webapp][:deploy_root_owner], "root"])
 end
 
-if node.has_key?("additional_deploy_root_group_members")
+if node[:webapp].has_key?("additional_deploy_root_group_members")
     members.merge(node[:additional_deploy_root_group_members])
 end
 
@@ -42,6 +42,13 @@ directory node[:webapp][:deploy_root] do
 end
 
 directory "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}" do
+    owner node[:webapp][:deploy_root_owner]
+    group node[:webapp][:deploy_root_group]
+    mode "2775"
+    recursive true
+end
+
+directory "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/backups" do
     owner node[:webapp][:deploy_root_owner]
     group node[:webapp][:deploy_root_group]
     mode "2775"
@@ -107,6 +114,14 @@ else
 end
 
 if !(node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_local_repo") and node[:using_vagrant][:use_local_repo])
+    script "login once with #{webapp_user}" do
+        interpreter "bash"
+        user webapp_user
+        cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}"
+        code <<-EOH
+        whoami
+        EOH
+    end
     script "clone or pull #{node[:webapp][:app_name]} repo" do
         interpreter "bash"
         user webapp_user
@@ -120,14 +135,22 @@ if !(node.attribute?("using_vagrant") and node[:using_vagrant].attribute?("use_l
         fi
         EOH
     end
+    bash "chmod 2775 #{node[:webapp][:branch_or_tag]}" do
+        cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}"
+        code <<-EOH
+        chmod 2775 #{node[:webapp][:branch_or_tag]}
+        EOH
+    end
 end
 
+# http://tickets.opscode.com/browse/CHEF-2288
 if node[:webapp].attribute?("stop_command")
     script "stop #{node[:webapp][:app_name]}" do
         interpreter "bash"
         user "root"
         code <<-EOH
-        su -l -c 'if [ -f $HOME/.aliases ]; then source $HOME/.aliases && #{node[:webapp][:stop_command]} > /dev/null 2>&1; else #{node[:webapp][:stop_command]} > /dev/null 2>&1; fi' #{webapp_user} > /dev/null 2>&1
+        H=$(getent passwd root | cut -d: -f6)
+        if [ -f $H/.aliases ]; then source $H/.aliases && #{node[:webapp][:stop_command]} > /dev/null 2>&1; else #{node[:webapp][:stop_command]} > /dev/null 2>&1; fi
         EOH
     end
 end

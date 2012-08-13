@@ -17,8 +17,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+default["webapp"]["deployer"] = "root"
 default["webapp"]["python"]["django"]["options"] = []
-default["webapp"]["deploy_root_owner"] = node["webapp"]["deployer"]
-default["webapp"]["deploy_root_group"] = node["webapp"]["deployer"]
+default["webapp"]["deploy_root_owner"] = "root"
+default["webapp"]["deploy_root_group"] = "root"
 default["webapp"]["branch_or_tag"] = "master"

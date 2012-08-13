@@ -33,7 +33,7 @@ if node.attribute?("python") and node[:python].has_key?("WORKON_HOME")
             cwd "#{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live"
             code <<-EOH
             git config --global http.sslverify false
-            su -l -c '#{node[:python][:WORKON_HOME]}/#{node[:webapp][:app_name]}/bin/pip install -r #{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live/#{node[:webapp][:python][:virtualenv_reqs]}' #{webapp_user} 
+            su -l -p -c '#{node[:python][:WORKON_HOME]}/#{node[:webapp][:app_name]}/bin/pip install -r #{node[:webapp][:deploy_root]}/#{node[:webapp][:app_name]}/live/#{node[:webapp][:python][:virtualenv_reqs]}' #{webapp_user} 
             EOH
         end
     end
@@ -64,12 +64,16 @@ if node[:webapp][:python].attribute?("django")
 end
 
 if node[:webapp].attribute?("start_command")
-    script "reload #{node[:webapp][:app_name]}" do
-        interpreter "bash"
-        user "root"
-        code <<-EOH
-        su -l -c 'if [ -f $HOME/.aliases ]; then source $HOME/.aliases && #{node[:webapp][:start_command]} > /dev/null 2>&1; else #{node[:webapp][:start_command]} > /dev/null 2>&1; fi' #{webapp_user} > /dev/null
-        EOH
+    begin
+        script "reload #{node[:webapp][:app_name]}" do
+            interpreter "bash"
+            user "root"
+            code <<-EOH
+            H=$(getent passwd root | cut -d: -f6)
+            if [ -f $H/.aliases ]; then source $H/.aliases && #{node[:webapp][:start_command]} > /dev/null 2>&1; else #{node[:webapp][:start_command]} > /dev/null 2>&1; fi
+            EOH
+        end
+    rescue
     end
 end
 
